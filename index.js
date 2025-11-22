@@ -4,12 +4,18 @@ require('dotenv').config();
 const express = require('express');
 const ExcelJS = require('exceljs');
 const fs = require('fs');
-const path = require('path'); // Dosya yollarını yönetmek için
+const path = require('path');
+const cors = require('cors'); // ✨ YENİ: CORS paketini ekledik
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware: JSON ve URL kodlu form verilerini işlemek için
+// 1. ✨ YENİ: CORS Middleware'i
+// Tüm alan adlarından gelen isteklere izin veriyoruz.
+// Production ortamında sadece Shopify alan adınızı buraya eklemeniz daha güvenlidir.
+app.use(cors()); 
+
+// 2. Middleware: JSON ve URL kodlu form verilerini işlemek için
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -25,18 +31,15 @@ app.post('/create-upload-file', async (req, res) => {
 
     // 2. Şablon Dosyanın Yerel Yolunu Belirleme
     try {
-        // Dinamik olarak şablon dosyasının tam yolunu oluştur
-        // Örn: templates/trendyol/elbise.xlsx
         const templateFileName = `${kategori}.xlsx`;
         const templatePath = path.join(
-            __dirname, // Projenin ana dizini
-            'templates', // templates klasörü
-            pazaryeri, // trendyol veya hepsiburada (Postman'den gelen değer)
+            __dirname,
+            'templates', 
+            pazaryeri, 
             templateFileName
         );
         
         // Dosyanın gerçekten var olup olmadığını kontrol et
-        // Buradaki pazaryeri ve kategori değerlerinin tam olarak klasör ve dosya adlarıyla eşleştiğinden emin olun.
         if (!fs.existsSync(templatePath)) {
              return res.status(404).send(`Hata: '${templateFileName}' şablonu, '${pazaryeri}' klasöründe bulunamadı.`);
         }
@@ -50,10 +53,7 @@ app.post('/create-upload-file', async (req, res) => {
         
         const worksheet = workbook.worksheets[0]; // İlk çalışma sayfasını al
 
-        // Şablonunuzdaki eski barkod ön ekini tanımlayın
         const eskiOnEk = "ZDX"; 
-        
-        // Yeni ön eki tırnak içine alarak hazırla (formül için gerekli)
         const yeniOnEkTirnakli = `"${barkod_on_ek}"`;
         const eskiOnEkTirnakli = `"${eskiOnEk}"`;
 
@@ -75,7 +75,7 @@ app.post('/create-upload-file', async (req, res) => {
                 cellB.value = { formula: newFormula };
             }
             
-            // 💡 Marka Adı Güncelleme (C sütununda Marka Adı olduğunu varsayalım)
+            // Marka Adı Güncelleme (C sütununda Marka Adı olduğunu varsayalım)
             const cellC = row.getCell('C'); 
             if (!cellC.value || cellC.value !== marka_adi) {
                 cellC.value = marka_adi; 
@@ -101,7 +101,7 @@ app.post('/create-upload-file', async (req, res) => {
     }
 });
 
-// Sunucuyu başlatma
+// Sunucuyu başlatma (Vercel kendi portunu atayacağı için burası production'da çalışmaz, ama yerel test için gerekli)
 app.listen(PORT, () => {
   console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor.`);
 });
