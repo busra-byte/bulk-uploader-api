@@ -76,10 +76,12 @@ app.post('/create-upload-file', async (req, res) => {
             }
             
             // Marka Adı Güncelleme (C sütununda Marka Adı olduğunu varsayalım)
-            const cellC = row.getCell('C'); 
-            if (!cellC.value || cellC.value !== marka_adi) {
-                cellC.value = marka_adi; 
-            }
+            // C Sütunu: Marka Adı Güncelleme (Sadece veri satırlarında)
+    const cellC = row.getCell('C'); 
+    if (cellC) {
+        // Kullanıcının girdiği marka adını hücreye yazar
+        cellC.value = marka_adi; 
+    }
         });
 
         // 5. Değiştirilmiş Dosyayı Buffer Olarak Kaydetme
