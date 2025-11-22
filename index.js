@@ -82,7 +82,7 @@ app.post('/create-upload-file', async (req, res) => {
     const cellC = row.getCell('C'); 
     if (cellC) {
         // Kullanıcının girdiği marka adını hücreye yazar
-        cellC.value = { value: marka_adi, type: ExcelJS.ValueType.String }; 
+        cellC.value = marka_adi; 
     }
         });
 
