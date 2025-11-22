@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Toplu Ürün Yükleme - Oluştur</title>
+<style>
+  :root{
+    --accent:#f57c00;
+    --muted:#f1f1f1;
+    --danger:#8b0000;
+    --card:#fff;
+    --shadow: 0 6px 18px rgba(0,0,0,0.08);
+    font-family: Inter, system-ui, Arial, sans-serif;
+  }
+  body{background:#fafafa;margin:28px;display:flex;justify-content:center}
+  .card{width:680px;background:var(--card);box-shadow:var(--shadow);border-radius:8px;padding:18px}
+  .header{font-weight:700;text-align:center;padding:6px 0;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:160px 1fr;gap:12px;align-items:center}
+  label{font-weight:600}
+  select,input{width:100%;padding:10px;border-radius:6px;border:1px solid #ddd;background:#fff;box-sizing:border-box}
+  .prefix{width:140px}
+  .big-btn{display:inline-block;background:var(--danger);color:#fff;padding:12px 22px;border-radius:6px;border:none;font-weight:700;cursor:pointer}
+  .create-row{display:flex;justify-content:center;padding-top:8px}
+  .result{margin-top:10px;text-align:center;font-size:14px;color:#444}
+  .link{display:inline-block;margin-top:8px}
+  .small-muted{font-size:12px;color:#777;margin-top:6px}
+  .top-row{display:flex;gap:10px;align-items:center}
+  .market-badge{background:var(--accent);color:#fff;padding:6px 10px;border-radius:6px;font-weight:700}
+  .form-row{padding:8px 0}
+  .spinner{display:inline-block;width:18px;height:18px;border:3px solid #fff;border-radius:50%;border-top-color:rgba(255,255,255,0.4);animation:spin .9s linear infinite;margin-left:8px;vertical-align:middle}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .error{color:#b00020;font-weight:600}
+  /* responsive */
+  @media (max-width:720px){.card{width:94%}}
+</style>
+</head>
+<body>
+  <div class="card" role="main">
+    <div class="top-row">
+      <div style="flex:1">
+        <div class="header">TOPLU ÜRÜN YÜKLEME DOSYASI OLUŞTUR</div>
+      </div>
+      <!-- örnek görüntü (yerel dosya yolu) -->
+      <div style="width:160px;text-align:right">
+        <img alt="örnek" src="/mnt/data/Ekran görüntüsü 2025-11-21 180135.png" style="max-width:100%;border-radius:6px" />
+      </div>
+    </div>
+
+    <form id="createForm" class="grid" autocomplete="off">
+      <div class="form-row"><label for="market">Pazaryeri</label></div>
+      <div class="form-row">
+        <select id="market" required>
+          <option value="Hepsiburada">Hepsiburada</option>
+          <option value="Trendyol">Trendyol</option>
+        </select>
+      </div>
+
+      <div class="form-row"><label for="kategori">Kategori</label></div>
+      <div class="form-row">
+        <select id="kategori" required>
+          <!-- istediğin kategori seçeneklerini ekle -->
+          <option value="Elbise">Elbise</option>
+          <option value="Bluz">Bluz</option>
+          <option value="Pantolon">Pantolon</option>
+          <option value="Ayakkabı">Ayakkabı</option>
+        </select>
+      </div>
+
+      <div class="form-row"><label for="prefix">Barkod Ön Ek (Örn: DRP)</label></div>
+      <div class="form-row">
+        <input id="prefix" placeholder="Örn: DRP" />
+      </div>
+
+      <div class="form-row"><label for="brand">Marka Adı (isteğe bağlı)</label></div>
+      <div class="form-row">
+        <input id="brand" placeholder="Marka" />
+      </div>
+
+      <div style="grid-column:1 / -1" class="create-row">
+        <button id="createBtn" class="big-btn" type="submit">OLUŞTUR</button>
+      </div>
+
+      <div style="grid-column:1 / -1">
+        <div id="status" class="result">ilgili dosya</div>
+        <div id="linkWrap" class="link"></div>
+        <div id="error" class="small-muted error"></div>
+        <div class="small-muted">Backend: <code id="backendUrl">http://localhost:5000/olustur</code></div>
+      </div>
+    </form>
+  </div>
+
+<script>
+(() => {
+  const form = document.getElementById('createForm');
+  const btn = document.getElementById('createBtn');
+  const status = document.getElementById('status');
+  const linkWrap = document.getElementById('linkWrap');
+  const errorBox = document.getElementById('error');
+  const backendUrlElem = document.getElementById('backendUrl');
+
+  // Eğer backend farklı bir URL'deyse burada güncelle
+  const BACKEND_URL = backendUrlElem.textContent.trim();
+
+  function setLoading(loading){
+    btn.disabled = loading;
+    if(loading){
+      btn.innerHTML = 'Oluşturuluyor <span class="spinner" aria-hidden="true"></span>';
+      status.textContent = 'İşlem sürüyor...';
+      errorBox.textContent = '';
+      linkWrap.innerHTML = '';
+    } else {
+      btn.innerHTML = 'OLUŞTUR';
+    }
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const kategori = document.getElementById('kategori').value.trim();
+    const prefix = document.getElementById('prefix').value.trim();
+    const market = document.getElementById('market').value.trim();
+    const marka = document.getElementById('brand').value.trim();
+
+    if(!kategori || !prefix || !market){
+      errorBox.textContent = 'Lütfen pazaryeri, kategori ve prefix alanlarını doldur.';
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const payload = { kategori, prefix, market, marka };
+      const res = await fetch(BACKEND_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if(!res.ok){
+        errorBox.textContent = data.error || data.detay || 'Sunucudan beklenmeyen bir cevap alındı.';
+        status.textContent = 'Hata oluştu';
+        setLoading(false);
+        return;
+      }
+
+      // Backend indirme linki döndürüyor
+      const url = data.indirmeLinki || data.dosyaLinki || data.link || data.indirme_url || null;
+      if(url){
+        status.textContent = 'Dosya oluşturuldu:';
+        linkWrap.innerHTML = `<a href="${url}" target="_blank" rel="noopener">📥 Dosyayı indir / aç</a>`;
+      } else if(data.dosya && data.dosya.id) {
+        // fallback: drive doküman linki oluştur
+        const fallback = `https://docs.google.com/spreadsheets/d/${data.dosya.id}`;
+        status.textContent = 'Dosya oluşturuldu:';
+        linkWrap.innerHTML = `<a href="${fallback}" target="_blank" rel="noopener">📥 Dosyayı indir / aç</a>`;
+      } else {
+        status.textContent = 'İşlem tamamlandı, ancak indirme linki alınamadı.';
+        linkWrap.innerHTML = `<pre style="white-space:pre-wrap">${JSON.stringify(data,null,2)}</pre>`;
+      }
+
+      errorBox.textContent = '';
+    } catch (err) {
+      console.error(err);
+      errorBox.textContent = 'İstek gönderilirken bir hata oluştu. (Konsolu kontrol et)';
+      status.textContent = 'Hata';
+    } finally {
+      setLoading(false);
+    }
+  });
+
+  // isteğe bağlı: enter ile prefix alanını temizle tuşu
+  document.getElementById('prefix').addEventListener('keydown', (e) => {
+    if(e.key === 'Escape') e.target.value = '';
+  });
+
+})();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+<div style="max-width:450px;margin:auto;padding:20px;border:1px solid #ccc;">
+  <h2>Toplu Ürün Yükleme Dosyası Oluştur</h2>
+
+  <label>Pazaryeri:</label>
+  <select id="pazaryeri">
+    <option value="Hepsiburada">Hepsiburada</option>
+    <option value="Trendyol">Trendyol</option>
+  </select><br><br>
+
+  <label>Kategori:</label>
+  <select id="kategori">
+    <option value="Bluz">Bluz</option>
+    <option value="Elbise">Elbise</option>
+    <option value="Mont">Mont</option>
+  </select><br><br>
+
+  <label>Barkod Ön Ek:</label>
+  <input type="text" id="barkod" placeholder="Örn: DRP" /><br><br>
+
+  <button id="olusturBtn">OLUŞTUR</button>
+  <p id="sonuc"></p>
+</div>
+
+{% comment %} 
+AJAX İŞLEM – Shopify’da özel JS blok içinde olmalı!
+{% endcomment %}
+<script>
+document.getElementById('olusturBtn').addEventListener('click', function () {
+  const data = {
+    pazaryeri: document.getElementById("pazaryeri").value,
+    kategori:  document.getElementById("kategori").value,
+    barkod:    document.getElementById("barkod").value,
+  };
+
+  // GOOGLE SCRIPT URL BURAYA GELECEK 👇
+  const apiUrl = "https://script.google.com/macros/s/AKfycbwTh6aeknp4p36gVmO8uw0TxRsf17AjTrZNfr2jsWszXYLrASToA9uZbtOVM1HxA7lwSg/exec";  
+
+  document.getElementById("sonuc").innerHTML = "İşleniyor...";
+
+  fetch(apiUrl, {
+    method: "POST",
+    mode: "no-cors",        // Shopify CORS hatası yaşamaman için
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  })
+  .then(res => res.text())  // no-cors olduğunda .json çalışmaz
+  .then(res => {
+    try {
+      const json = JSON.parse(res);   // JSON formatını çözmeyi deniyoruz
+      document.getElementById("sonuc").innerHTML = 
+        `<a href="${json.url}" target="_blank">📁 Dosyayı İndir</a>`;
+    } catch(e) {
+      document.getElementById("sonuc").innerHTML = 
+        "⚠ Beklenmeyen cevap alındı. Backend JSON döndürüyor mu?";
+    }
+  })
+  .catch(err => {
+    document.getElementById("sonuc").innerHTML = 
+      "❌ Bir hata oluştu. Console'u kontrol et.";
+    console.error(err);
+  });
+});
+</script>
