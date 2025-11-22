@@ -59,8 +59,10 @@ app.post('/create-upload-file', async (req, res) => {
 
 
         // Dosyadaki her satırı döngüye al
-        worksheet.eachRow({ includeEmpty: false, first: 2 }, (row, rowNumber) => {
-            
+        worksheet.eachRow({ includeEmpty: false}, (row, rowNumber) => {
+            if (rowNumber === 1) {
+        return; 
+    }
             // A Sütunu: SKU/Barcode için formül değiştirme (="ZDX" & Kx & Yx)
             const cellA = row.getCell('A');
             if (cellA.formula) {
@@ -80,7 +82,7 @@ app.post('/create-upload-file', async (req, res) => {
     const cellC = row.getCell('C'); 
     if (cellC) {
         // Kullanıcının girdiği marka adını hücreye yazar
-        cellC.value = marka_adi; 
+        cellC.value = { value: marka_adi, type: ExcelJS.ValueType.String }; 
     }
         });
 
