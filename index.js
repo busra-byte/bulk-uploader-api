@@ -105,6 +105,82 @@ app.post('/create-upload-file', async (req, res) => {
     }
 });
 
+// ----------------------------------------------------------------------
+// ✅ YENİ ROTA: /stok-guncelle (Toplu Stok Güncelleme)
+// ----------------------------------------------------------------------
+app.post('/stok-guncelle', async (req, res) => {
+    // 1. Frontend'den gelen verileri alma (Sadece barkod_on_ek)
+    const { barkod_on_ek } = req.body;
+
+    // Temel doğrulama
+    if (!barkod_on_ek) {
+        return res.status(400).send('Barkod Ön Ek alanı boş bırakılamaz.');
+    }
+
+    // 2. Şablon Dosyanın Yerel Yolunu Belirleme (stok/stok_guncelleme.xlsx)
+    try {
+        const templateFileName = 'stok_guncelleme.xlsx';
+        const templatePath = path.join(
+            __dirname,
+            'stok', // Yeni klasör adı (stok)
+            templateFileName
+        );
+        
+        if (!fs.existsSync(templatePath)) {
+             return res.status(404).send(`Hata: Stok şablon dosyası ('${templateFileName}') bulunamadı. Lütfen /stok klasörüne eklediğinizden emin olun.`);
+        }
+
+        // 3. Şablon Dosyasını Oku
+        const fileBuffer = fs.readFileSync(templatePath);
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(fileBuffer);
+        const worksheet = workbook.worksheets[0]; 
+
+        // 4. Excel Dosyasını Manipüle Etme
+        const eskiOnEk = "ZDX"; // Şablonunuzdaki eski ön ek
+        const yeniOnEkTirnakli = `"${barkod_on_ek}"`;
+        const eskiOnEkTirnakli = `"${eskiOnEk}"`;
+
+        // Yalnızca formül içeren A ve B sütunlarını güncellemek için döngü
+        worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+            
+            // SADECE SATIR 1'İ ATLA (Başlıkları korumak için)
+            if (rowNumber === 1) {
+                return; 
+            }
+            
+            // A Sütunu: SKU/Barcode formülü değiştirilir
+            const cellA = row.getCell('A');
+            if (cellA.formula) {
+                let newFormula = cellA.formula.replace(eskiOnEkTirnakli, yeniOnEkTirnakli);
+                cellA.value = { formula: newFormula };
+            }
+
+            // B Sütunu: Barkodlar için formül değiştirilir
+            const cellB = row.getCell('B');
+            if (cellB.formula) {
+                let newFormula = cellB.formula.replace(eskiOnEkTirnakli, yeniOnEkTirnakli);
+                cellB.value = { formula: newFormula };
+            }
+            
+            // C Sütunu veya diğer sütunlar için hiçbir işlem YAPILMAZ (talep üzerine)
+        });
+
+        // 5. Geri Gönderme
+        const modifiedBuffer = await workbook.xlsx.writeBuffer();
+        const outputFileName = `stok_guncelleme_${barkod_on_ek}_${Date.now()}.xlsx`;
+        
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${outputFileName}"`);
+        res.send(modifiedBuffer);
+
+    } catch (error) {
+        console.error('Stok güncelleme sırasında hata:', error);
+        res.status(500).send(`Stok dosyası işlenirken sunucu hatası oluştu: ${error.message}`);
+    }
+});
+
+
 // Sunucuyu başlatma (Vercel kendi portunu atayacağı için burası production'da çalışmaz, ama yerel test için gerekli)
 app.listen(PORT, () => {
   console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor.`);
