@@ -156,14 +156,6 @@ app.post('/stok-guncelle', async (req, res) => {
                 cellA.value = { formula: newFormula };
             }
 
-            // B Sütunu: Barkodlar için formül değiştirilir
-            const cellB = row.getCell('B');
-            if (cellB.formula) {
-                let newFormula = cellB.formula.replace(eskiOnEkTirnakli, yeniOnEkTirnakli);
-                cellB.value = { formula: newFormula };
-            }
-            
-            // C Sütunu veya diğer sütunlar için hiçbir işlem YAPILMAZ (talep üzerine)
         });
 
         // 5. Geri Gönderme
