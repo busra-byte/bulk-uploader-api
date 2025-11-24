@@ -105,6 +105,7 @@ app.post('/create-upload-file', async (req, res) => {
     }
 });
 
+
 // ----------------------------------------------------------------------
 // ✅ YENİ ROTA: /stok-guncelle (Toplu Stok Güncelleme)
 // ----------------------------------------------------------------------
@@ -156,6 +157,14 @@ app.post('/stok-guncelle', async (req, res) => {
                 cellA.value = { formula: newFormula };
             }
 
+            // B Sütunu: Barkodlar için formül değiştirilir
+            const cellB = row.getCell('B');
+            if (cellB.formula) {
+                let newFormula = cellB.formula.replace(eskiOnEkTirnakli, yeniOnEkTirnakli);
+                cellB.value = { formula: newFormula };
+            }
+            
+            // C Sütunu veya diğer sütunlar için hiçbir işlem YAPILMAZ (talep üzerine)
         });
 
         // 5. Geri Gönderme
@@ -171,7 +180,6 @@ app.post('/stok-guncelle', async (req, res) => {
         res.status(500).send(`Stok dosyası işlenirken sunucu hatası oluştu: ${error.message}`);
     }
 });
-
 
 // Sunucuyu başlatma (Vercel kendi portunu atayacağı için burası production'da çalışmaz, ama yerel test için gerekli)
 app.listen(PORT, () => {
